@@ -18,4 +18,11 @@ app.use(cookieParser())
 //api error handling and response karne ke liye utils folder me files banayi hai -> best practice
 //to handle errors , we neeed to write a middleware for it which sends the structured format to user
 
+//import routes
+import userRouter from "./routes/user.routes.js"
+
+//routes declarartion -> to use routes we need to use app.use()
+app.use("/api/v1/users" , userRouter) 
+// routes will look like : http://localhost:8000/api/v1/users/register
+
 export default app
