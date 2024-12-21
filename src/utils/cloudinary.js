@@ -20,6 +20,7 @@ const uploadOnCloudinary = async (filePath) => {
 
     } catch (error) {
         fs.unlinkSync(filePath) // unlink file after failer in uploading file
+        console.log("file upload : failure")
         return null
     }
 }

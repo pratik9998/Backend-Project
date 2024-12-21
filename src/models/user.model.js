@@ -62,7 +62,7 @@ const userSchema = new mongoose.Schema({
 //runs just before saving to database only when password is changed, like middleware
 userSchema.pre("save" , async function (next) {
     if (!this.isModified("password")) return next()
-    this.password = bcrypt.hash(this.password , 10) // 10 rounds
+    this.password = await bcrypt.hash(this.password , 10) // 10 rounds
     next()
 })
 
