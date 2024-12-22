@@ -6,14 +6,8 @@ const router = Router()
 
 router.route("/register").post(
     upload.fields([   //used middleware here
-        {
-            name : "avatar",
-            maxCount : 1
-        },
-        {
-            name : "coverImage",
-            maxCount : 1
-        }
+        { name : "avatar", maxCount : 1 },
+        { name : "coverImage", maxCount : 1 }
     ]),
     registerUser
 )
