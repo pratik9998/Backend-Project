@@ -1,17 +1,11 @@
 import {v2 as cloudinary} from "cloudinary"
 import fs from "fs"
 
-cloudinary.config({ 
-    cloud_name: "djft6bnxc", 
-    api_key: "824682536959268", 
-    api_secret: "t1wdLSJi7KEooj4RcubliaooVS0"
+cloudinary.config({  //why env gives error, solved in package.json, "dev" command changed
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME, 
+    api_key: process.env.CLOUDINARY_API_KEY, 
+    api_secret: process.env.CLOUDINARY_API_SECRET
 })
-
-// cloudinary.config({  // why this gives error
-//     cloud_name: process.env.CLOUDINARY_CLOUD_NAME, 
-//     api_key: process.env.CLOUDINARY_API_KEY, 
-//     api_secret: process.env.CLOUDINARY_API_SECRET
-// })
 
 const uploadOnCloudinary = async (filePath) => {
     try {
@@ -25,7 +19,7 @@ const uploadOnCloudinary = async (filePath) => {
         const response = await cloudinary.uploader.upload(filePath , {
             resource_type : "auto"
         })
-        console.log("cloudinary file upload : success" , response.url)
+        // console.log("cloudinary file upload : success" , response.url)
         fs.unlinkSync(filePath)
         return response
 
