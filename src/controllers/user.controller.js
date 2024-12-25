@@ -3,8 +3,10 @@ import {ApiError} from "../utils/ApiError.js"
 import {ApiResponse} from "../utils/ApiResponse.js"
 import {User} from "../models/user.model.js"
 import {uploadOnCloudinary} from "../utils/cloudinary.js"
+import jwt from "jsonwebtoken"
 
 const generateAccessAndRefreshToken = async (userId) => {
+    //ye tab kaam aayega jab user login karega
     try {
         const user = await User.findById(userId)
         // console.log(process.env.ACCESS_TOKEN_SECRET)
@@ -176,8 +178,55 @@ const logoutUser = asyncHandler (async (req , res) => {
     .json(new ApiResponse (200, {}, "User logged Out"))
 })
 
+const refreshAccessToken = asyncHandler (async (req, res) => {
+    //accesstoken ko refresh karne ke liye
+    try {
+        
+        const incomingRefreshToken = req.cookies?.refreshToken || req.body.refreshToken
+        if (!incomingRefreshToken) {
+            throw new ApiError (401, "Unauthorized request")
+        }
+
+        const decodedToken = Jwt.verify(incomingRefreshToken, process.env.REFRESH_TOKEN_SECRET)
+
+        const user = await User.findById(decodedToken?._id)
+        if (!user) {
+            throw new ApiError (401, "Invalid Refresh Token")
+        }
+        
+        if (incomingRefreshToken !== user?.refreshToken) {
+            throw new ApiError(401, "Refresh Token expired")
+        }
+
+        const options = {
+            httpOnly : true,
+            secure : true
+        }
+
+        const {newAccessToken, newRefreshToken} = await generateAccessAndRefreshToken(user._id)
+
+        return res.status(20)
+        .cookie("accessToken", newAccessToken, options)
+        .cookie("refreshToken", newRefreshToken, options)
+        .json(
+            new ApiResponse(
+                200,
+                {
+                    newAccessToken, 
+                    refreshToken : newRefreshToken
+                },
+                "Access token refreshed"
+            )
+        )
+
+    } catch (error) {
+        throw new ApiError (401, `Error when refreshing access token: ${error}`)
+    }
+})
+
 export {
     registerUser,
     loginUser,
-    logoutUser
+    logoutUser,
+    refreshAccessToken
 }
