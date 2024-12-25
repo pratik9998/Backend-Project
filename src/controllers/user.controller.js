@@ -2,7 +2,7 @@ import {asyncHandler} from "../utils/asyncHandler.js"
 import {ApiError} from "../utils/ApiError.js"
 import {ApiResponse} from "../utils/ApiResponse.js"
 import {User} from "../models/user.model.js"
-import {uploadOnCloudinary} from "../utils/cloudinary.js"
+import {uploadOnCloudinary, deleteFromCloudinary} from "../utils/cloudinary.js"
 import jwt from "jsonwebtoken"
 
 const generateAccessAndRefreshToken = async (userId) => {
@@ -224,9 +224,173 @@ const refreshAccessToken = asyncHandler (async (req, res) => {
     }
 })
 
+const changeUserPassword = asyncHandler ( async (req, res) => {
+    //isse pehle auth middleware lagaya hai, jo ki req me user add karke hi send kar rha
+    try {
+        const {oldPassword, newPassword} = req.body
+        
+        const user = await User.findById(req.user?._id)
+        const isOldPasswordCorrect = user.isPasswordCorrect(oldPassword)
+
+        if (!isOldPasswordCorrect) {
+            throw new ApiError (400, "Invalid Old password")
+        }
+
+        user.password = newPassword
+        await user.save({validateBeforeSave : false})
+
+        return res.status(200).json(new ApiResponse (200, {}, "Password changed"))
+
+    } catch (error) {
+        throw new ApiError (401, `Something went wrong while changing the password: ${error}`)
+    }
+})
+
+const getCurrentUser = asyncHandler (async (req, res) => {
+    return res.status(200).json(new ApiResponse (200, req.user, "user fetched successfully"))
+})
+
+const updateUserAvatar = asyncHandler ( async (req, res) => {
+    try {
+        console.log(req.file)
+        const newAvatarLocalPath = req.file?.path
+        if (!newAvatarLocalPath) {
+            throw new ApiError (400, "New Avatar File is not Locally Available on Server")
+        }
+    
+        const newAvatarResponse = await uploadOnCloudinary(newAvatarLocalPath)
+        if (!newAvatarResponse) {
+            throw new ApiError (400, "error while uploading new Avatar file on cloudinary")
+        }
+        
+        const oldAvatar = req.user?.avatar
+        //kyuki hme updated user send karna padega na
+        const user = await User.findByIdAndUpdate(
+            req.user?._id,
+            {
+                $set : {
+                    avatar : newAvatarResponse.url
+                }
+            },
+            {new : true}
+        ).select("-password")
+        
+        // console.log(user)
+        await deleteFromCloudinary(oldAvatar)
+    
+        return res.status(200).json(new ApiResponse(200, user, "Avatar changed successfully"))
+
+    } catch (error) {
+        throw new ApiError (500, `something went wrong while changing avatar: ${error}`)
+    }
+})
+
+const updateCoverImage = asyncHandler ( async (req, res) => {
+    try {
+
+        const newCoverImageLocalPath = req.file?.path
+        if (!newCoverImageLocalPath) {
+            throw new ApiError (400, "New cover image File is not Locally Available on Server")
+        }
+    
+        const newCoverImageResponse = await uploadOnCloudinary(newCoverImageLocalPath)
+        if (!newCoverImageResponse) {
+            throw new ApiError (400, "error while uploading new cover image file on cloudinary")
+        }
+        
+        const oldCoverImage = req.user?.coverImage
+        //kyuki hme updated user send karna padega na
+        const user = await User.findByIdAndUpdate(
+            req.user?._id,
+            {
+                $set : {
+                    coverImage : newCoverImageResponse.url
+                }
+            },
+            {new : true}
+        ).select("-password -refreshToken")
+        
+        await deleteFromCloudinary(oldCoverImage)
+        return res.status(200).json(new ApiResponse(200, user, "Avatar changed successfully"))
+
+    } catch (error) {
+        throw new ApiError (500, `something went wrong while changing avatar: ${error}`)
+    }
+})
+
+const getUserChennelProfile = asyncHandler ( async (req, res) => {
+    const {username} = req.params
+
+    if (!username?.trim()) {
+        throw new ApiError (400, "username is required")
+    }
+
+    //now it's time to write aggregation pipeline which returns an array of objects
+    //these square-breckets are stages, which performs step by step process
+    const channel = await User.aggregation([
+        {
+            $match : {username : username?.toLowerCase()}
+        },
+        {
+            $lookup : {
+                from: "subscriptions", //mongodb me jis name se save hota us name se likhna padta
+                localField: "_id",
+                foreignField: "channel", //field from from collection
+                as: "subscribers"
+            }
+        },
+        {
+            $lookup : {
+                from: "subscriptions",
+                localField: "_id",
+                foreignField: "subscriber",
+                as: "subscribedTo"
+            }
+        },
+        {
+            $addFields : {
+                subscribersCount : {$size : "$subscribers"},
+                subscribedCount : {$size : "$subscribedTo"},
+                isSubscribed : {
+                    $cond : {
+                        if : {$in : [req.user?._id, "$subscribers.subscriber"]}, //
+                        then : true,
+                        else : false
+                    }
+                }
+            }
+        },
+        {
+            $project : {
+                _id : 1,
+                fullName : 1,
+                username : 1,
+                email : 1,
+                avatar : 1,
+                coverImage : 1,
+                subscribersCount : 1,
+                subscribedCount : 1,
+                isSubscribed : 1
+            }
+        }
+    ])
+
+    console.log(channel)
+    if (!channel?.length) {
+        throw new ApiError (404, "channel does not exist")
+    }
+
+    return res.status(200)
+    .json(new ApiResponse (200, channel[0], "Channel details fetched successfully"))
+})
+
 export {
     registerUser,
     loginUser,
     logoutUser,
-    refreshAccessToken
+    refreshAccessToken,
+    changeUserPassword,
+    getCurrentUser,
+    updateUserAvatar,
+    updateCoverImage
 }

@@ -1,5 +1,6 @@
 import {v2 as cloudinary} from "cloudinary"
-import fs from "fs"
+import fs, { appendFile } from "fs"
+import { ApiError } from "./ApiError.js"
 
 cloudinary.config({  //why env gives error, solved in package.json, "dev" command changed
     cloud_name: process.env.CLOUDINARY_CLOUD_NAME, 
@@ -30,4 +31,26 @@ const uploadOnCloudinary = async (filePath) => {
     }
 }
 
-export {uploadOnCloudinary}
+const deleteFromCloudinary = async (imageURL) => {
+    try {
+
+        //first extract public id
+        //example : "http://res.cloudinary.com/djft6bnxc/image/upload/v1735105158/public_id.png" ==> in this publidId is last name without extension
+        const urlArray = imageURL.split('/')
+        const last = urlArray[urlArray.length - 1]
+        const publicId = last.split('.')[0]
+    
+        // console.log(publicId)
+    
+        await cloudinary.uploader.destroy(publicId, (error, result) => {
+            if (error){
+                throw new ApiError(500,`existing file could not be deleted from cloudinary: ${error}`)
+            } 
+        })
+
+    } catch (error) {
+        throw new ApiError (500, `error while destroying existing image on cloudinary: ${error}`)
+    }
+}
+
+export {uploadOnCloudinary, deleteFromCloudinary}
