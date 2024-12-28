@@ -4,7 +4,7 @@ import {ApiResponse} from "../utils/ApiResponse.js"
 import {User} from "../models/user.model.js"
 import {uploadOnCloudinary, deleteFromCloudinary} from "../utils/cloudinary.js"
 import jwt from "jsonwebtoken"
-import { mongo } from "mongoose"
+import mongoose from "mongoose"
 
 const generateAccessAndRefreshToken = async (userId) => {
     //ye tab kaam aayega jab user login karega
@@ -162,9 +162,9 @@ const logoutUser = asyncHandler (async (req , res) => {
     //and decodes it and finds user by its id and attachess this user with req, which can be access by req.user -> this is done by auth middleware
 
     //for logout, you need to remove refresh token
-    await User.findOneAndUpdate(
+    await User.findByIdAndUpdate(
         req.user._id,
-        {$set : {refreshToken : undefined}},
+        {$unset : {refreshToken : 1}},
         {new : true} //isse updated user milega
     )
 
