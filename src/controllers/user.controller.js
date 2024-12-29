@@ -134,7 +134,6 @@ const loginUser = asyncHandler ( async (req , res) => {
     }
 
     const {accessToken, refreshToken} = await generateAccessAndRefreshToken(user._id)
-
     const loggedInUser = await User.findById(user._id).select(
         "-password -refreshToken"
     )
@@ -182,19 +181,21 @@ const logoutUser = asyncHandler (async (req , res) => {
 const refreshAccessToken = asyncHandler (async (req, res) => {
     //accesstoken ko refresh karne ke liye
     try {
-        
-        const incomingRefreshToken = req.cookies?.refreshToken || req.body.refreshToken
+        // console.log(req.cookies)
+        // console.log(req.body)
+        const incomingRefreshToken = req.cookie?.refreshToken || req.body.refreshToken
         if (!incomingRefreshToken) {
             throw new ApiError (401, "Unauthorized request")
         }
 
-        const decodedToken = Jwt.verify(incomingRefreshToken, process.env.REFRESH_TOKEN_SECRET)
+        const decodedToken = jwt.verify(incomingRefreshToken, process.env.REFRESH_TOKEN_SECRET)
 
         const user = await User.findById(decodedToken?._id)
         if (!user) {
             throw new ApiError (401, "Invalid Refresh Token")
         }
-        
+        // console.log(incomingRefreshToken)
+        // console.log(user?.refreshToken)
         if (incomingRefreshToken !== user?.refreshToken) {
             throw new ApiError(401, "Refresh Token expired")
         }
@@ -206,7 +207,7 @@ const refreshAccessToken = asyncHandler (async (req, res) => {
 
         const {newAccessToken, newRefreshToken} = await generateAccessAndRefreshToken(user._id)
 
-        return res.status(20)
+        return res.status(200)
         .cookie("accessToken", newAccessToken, options)
         .cookie("refreshToken", newRefreshToken, options)
         .json(
@@ -231,7 +232,7 @@ const changeUserPassword = asyncHandler ( async (req, res) => {
         const {oldPassword, newPassword} = req.body
         
         const user = await User.findById(req.user?._id)
-        const isOldPasswordCorrect = user.isPasswordCorrect(oldPassword)
+        const isOldPasswordCorrect = await user.isPasswordCorrect(oldPassword)
 
         if (!isOldPasswordCorrect) {
             throw new ApiError (400, "Invalid Old password")
@@ -319,7 +320,7 @@ const updateCoverImage = asyncHandler ( async (req, res) => {
     }
 })
 
-const getUserChennelProfile = asyncHandler ( async (req, res) => {
+const getUserChannelProfile = asyncHandler ( async (req, res) => {
     const {username} = req.params
 
     if (!username?.trim()) {
@@ -452,6 +453,6 @@ export {
     getCurrentUser,
     updateUserAvatar,
     updateCoverImage,
-    getUserChennelProfile,
+    getUserChannelProfile,
     getWatchHistory
 }
