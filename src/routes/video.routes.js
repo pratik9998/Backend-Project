@@ -1,7 +1,7 @@
 import {Router} from "express"
 import {publishVideo,
         getAllVideos,
-        getAllVideosOfaUser
+        getVideoById
 } from "../controllers/video.controller.js"
 import {upload} from "../middlewares/multer.middleware.js"
 import {verifyJWT} from "../middlewares/auth.middleware.js"
@@ -23,6 +23,7 @@ router.route("/upload").post(   //tested
     publishVideo
 )
 
-router.route("/").get(getAllVideos) //tested
+router.route("/").get(getAllVideos) //tested -> uses query
+router.route("/:videoId").get(getVideoById)
 
 export default router

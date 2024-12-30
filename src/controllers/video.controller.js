@@ -3,6 +3,8 @@ import {ApiResponse} from "../utils/ApiResponse.js"
 import { asyncHandler } from "../utils/asyncHandler.js"
 import {uploadOnCloudinary} from "../utils/cloudinary.js"
 import {Video} from "../models/video.model.js"
+import {User} from "../models/user.model.js"
+import mongoose from "mongoose"
 
 const publishVideo = asyncHandler (async (req, res) => {
     try {
@@ -63,16 +65,49 @@ const getAllVideos = asyncHandler ( async (req, res) => {
     try {
         
         // console.log(req.query)
-        const {page = 1, limit = 5} = req.query
+        let {page = 1, limit = 5, query = "", sortBy = "createdAt", sortType = "desc", username} = req.query
 
         const pageCount = parseInt(page)
         const limitValue = parseInt(limit)
         const skipCount = (page-1)*limit
+        query = query?.trim()
+        sortBy = sortBy?.trim()
+        sortType = sortType?.trim()
+        // console.log(username)
+        username = username?.trim()
+        // console.log(username)
+        
+        const matchStage = {
+            isPublished : true,
+        }
+        if (username) {
+            const user = await User.findOne({username})
+            if (user) {
+                // console.log(user._id)
+                matchStage.owner = user._id
+            }
+            if (!user) {
+                matchStage.owner = ""
+            }
+        }
+        if (query) {
+            matchStage.$or = [
+                {title : {$regex : query, $options : "i"}}, //options = i, case insensitive
+                {description : {$regex : query, $options : "i"}}
+            ]
+        }
 
+        // console.log(matchStage)
+
+        const sortOrder = (sortType.toLowerCase()==="asc") ? 1 : -1
+        const sortStage = {
+            [sortBy] : sortOrder
+        }
+        // console.log(sortStage)
 
         const videos = await Video.aggregate([
             {
-                $match : {isPublished : true}
+                $match : matchStage
             },
             {
                 $lookup : {
@@ -96,6 +131,9 @@ const getAllVideos = asyncHandler ( async (req, res) => {
                 }
             },
             {
+                $sort : sortStage
+            },
+            {
                 $skip : skipCount
             },
             {
@@ -116,11 +154,56 @@ const getAllVideos = asyncHandler ( async (req, res) => {
     }
 })
 
-const getAllVideosOfaUser = asyncHandler ( async (req,res) => {
+const getVideoById = asyncHandler ( async (req, res) => {
+    try {
 
+        // console.log(req.params)
+        let {videoId} = req.params
+        
+        if (!videoId) {
+            throw new ApiError (401, "videoId required")
+        }
+
+        videoId = videoId?.trim()
+
+        const video = await Video.aggregate([
+            {
+                $match : { _id : new mongoose.Types.ObjectId(videoId)}
+            },
+            {
+                $lookup : {
+                    from : "users",
+                    localField : "owner",
+                    foreignField : "_id",
+                    as : "ownerDetails"
+                }
+            },
+            {
+                $project : {
+                    _id : 1,
+                    videoFile : 1,
+                    thumbnail : 1,
+                    title : 1,
+                    duration : 1,
+                    views : 1,
+                    owner : "$ownerDetails.username",
+                    avatar : "$ownerDetails.avatar",
+                    createdAt : 1
+                }
+            }
+        ])
+
+        return res.status(201)
+        .json(
+            new ApiResponse(201,video,"video fetched")
+        )
+
+    } catch (error) {
+        throw new ApiError (401, `something went wrong while getting video by id: ${error}`)
+    }
 })
 
 export {publishVideo,
         getAllVideos,
-        getAllVideosOfaUser
+        getVideoById
 }
