@@ -75,7 +75,7 @@ const registerUser = asyncHandler ( async (req , res) => {
         throw new ApiError(400 , "Avatar file on clodinary required")
     }
 
-    const user =await User.create({
+    const user = await User.create({
         fullName,
         avatar : avatarResponse.url,
         coverImage : coverImageResponse?.url || "",
