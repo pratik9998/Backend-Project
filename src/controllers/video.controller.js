@@ -188,7 +188,8 @@ const getVideoById = asyncHandler ( async (req, res) => {
                     views : 1,
                     owner : "$ownerDetails.username",
                     avatar : "$ownerDetails.avatar",
-                    createdAt : 1
+                    createdAt : 1,
+                    isPublished : 1
                 }
             }
         ])
@@ -259,6 +260,34 @@ const updateThumbnail = asyncHandler ( async (req, res) => {
             },
             { new : true }
         )
+
+        video = await Video.aggregate([
+            {
+                $match : { _id : new mongoose.Types.ObjectId(videoId)}
+            },
+            {
+                $lookup : {
+                    from : "users",
+                    localField : "owner",
+                    foreignField : "_id",
+                    as : "ownerDetails"
+                }
+            },
+            {
+                $project : {
+                    _id : 1,
+                    videoFile : 1,
+                    thumbnail : 1,
+                    title : 1,
+                    duration : 1,
+                    views : 1,
+                    owner : "$ownerDetails.username",
+                    avatar : "$ownerDetails.avatar",
+                    createdAt : 1,
+                    isPublished : 1
+                }
+            }
+        ])
         
         await deleteFromCloudinary(oldThumbnailURL)
         return res.status(201)
@@ -270,9 +299,29 @@ const updateThumbnail = asyncHandler ( async (req, res) => {
     }
 })
 
+const togglePublishStatus = asyncHandler (async (req, res) => {
+    try {
+        const {videoId} = req.params
+
+        const video = await Video.findById(videoId)
+        if (!video) {
+            throw new ApiError (401, "video doesn't exist")
+        }
+
+        video.isPublished = !video.isPublished
+        await video.save({validateBeforeSave : false})
+
+        return res.status(201)
+        .json(new ApiResponse (201,{},"changed toggle status"))
+    } catch (error) {
+        throw new ApiError(401, `error while changing publish status: ${error}`)
+    }
+})
+
 export {publishVideo,
         getAllVideos,
         getVideoById,
         deleteVideo,
-        updateThumbnail
+        updateThumbnail,
+        togglePublishStatus
 }
