@@ -1,7 +1,7 @@
 import { ApiError } from "../utils/ApiError.js"
 import {ApiResponse} from "../utils/ApiResponse.js"
 import { asyncHandler } from "../utils/asyncHandler.js"
-import {uploadOnCloudinary} from "../utils/cloudinary.js"
+import {uploadOnCloudinary, deleteFromCloudinary} from "../utils/cloudinary.js"
 import {Video} from "../models/video.model.js"
 import {User} from "../models/user.model.js"
 import mongoose from "mongoose"
@@ -193,6 +193,12 @@ const getVideoById = asyncHandler ( async (req, res) => {
             }
         ])
 
+        // console.log(video)
+        
+        if (!video) {
+            throw new ApiError (401, "video doesn't exist")
+        }
+
         return res.status(201)
         .json(
             new ApiResponse(201,video,"video fetched")
@@ -203,7 +209,70 @@ const getVideoById = asyncHandler ( async (req, res) => {
     }
 })
 
+const deleteVideo = asyncHandler ( async (req, res) => {
+    try {
+        const {videoId} = req.params
+        
+        const video = await Video.findById(videoId)
+        if(!video) {
+            throw new ApiError (401, "video doesn't exist")
+        }
+
+        const thumbnailURL = video.thumbnail
+        const videoURL = video.videoFile
+
+        await Video.findByIdAndDelete(videoId)
+        await deleteFromCloudinary(thumbnailURL)
+        await deleteFromCloudinary(videoURL)        
+
+        return res.status(201)
+        .json(new ApiResponse (201, {}, "video deleted successfully"))
+    } catch (error) {
+        throw new ApiError (401, `something went wrong while deleting video by id: ${error}`)
+    }
+})
+
+const updateThumbnail = asyncHandler ( async (req, res) => {
+    try {
+        let {videoId} = req.params
+        const newThumbnailLocalPath = req.file?.path
+        if (!newThumbnailLocalPath) {
+            throw new ApiError(401, "new thumbnail file required")
+        }
+        
+        videoId = videoId?.trim()
+        let video = await Video.findById(videoId)
+        if (!video) {
+            throw new ApiError(401, "video doesn't exist")
+        }
+
+        const oldThumbnailURL =  video.thumbnail
+        const newThumbnailResponse = await uploadOnCloudinary(newThumbnailLocalPath)
+        if (!newThumbnailResponse) {
+            throw new ApiError(401, "New thumbnail response error")
+        }
+
+        video = await Video.findByIdAndUpdate(
+            videoId,
+            {
+                $set : {thumbnail : newThumbnailResponse.url}
+            },
+            { new : true }
+        )
+        
+        await deleteFromCloudinary(oldThumbnailURL)
+        return res.status(201)
+        .json(
+            new ApiResponse(201,video,"thumbnail updated successfully")
+        )
+    } catch (error) {
+        throw new ApiError(401, `error while updating thumbnail: ${error}`)
+    }
+})
+
 export {publishVideo,
         getAllVideos,
-        getVideoById
+        getVideoById,
+        deleteVideo,
+        updateThumbnail
 }

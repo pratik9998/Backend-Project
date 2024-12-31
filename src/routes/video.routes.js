@@ -1,7 +1,9 @@
 import {Router} from "express"
 import {publishVideo,
         getAllVideos,
-        getVideoById
+        getVideoById,
+        deleteVideo,
+        updateThumbnail
 } from "../controllers/video.controller.js"
 import {upload} from "../middlewares/multer.middleware.js"
 import {verifyJWT} from "../middlewares/auth.middleware.js"
@@ -24,6 +26,8 @@ router.route("/upload").post(   //tested
 )
 
 router.route("/").get(getAllVideos) //tested -> uses query
-router.route("/:videoId").get(getVideoById)
+router.route("/:videoId").get(getVideoById) // tested -> uses params
+router.route("/:videoId").delete(deleteVideo) // tested -> uses params
+router.route("/:videoId").patch(upload.single("newThumbnail"),updateThumbnail) //tested
 
 export default router
