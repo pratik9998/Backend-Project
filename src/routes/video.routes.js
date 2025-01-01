@@ -30,6 +30,6 @@ router.route("/").get(getAllVideos) //tested -> uses query
 router.route("/:videoId").get(getVideoById) // tested -> uses params
 router.route("/:videoId").delete(deleteVideo) // tested -> uses params
 router.route("/:videoId").patch(upload.single("newThumbnail"),updateThumbnail) //tested
-router.route("/toggle/publish/:videoId").patch(togglePublishStatus) //not tested
+router.route("/toggle/publish/:videoId").patch(togglePublishStatus) //tested
 
 export default router

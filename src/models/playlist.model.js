@@ -4,7 +4,7 @@ const playlistSchema = new mongoose.Schema({
 
     name : {
         type : String,
-        required : true
+        required : [true, "playlist name is required"]
     },
 
     description : {
