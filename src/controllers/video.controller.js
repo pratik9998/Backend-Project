@@ -194,6 +194,16 @@ const getVideoById = asyncHandler ( async (req, res) => {
             }
         ])
 
+        if ((!video) || (!video[0]?.views)) {
+            throw new ApiError (400, "video doesn't exist")
+        }
+
+        video[0].views = video[0].views + 1
+        await Video.findOneAndUpdate(
+            {_id : new mongoose.Types.ObjectId(videoId)},
+            {$set : {views : video[0].views}},
+            {new : true}
+        )
         // console.log(video)
         
         if (!video) {
@@ -202,11 +212,11 @@ const getVideoById = asyncHandler ( async (req, res) => {
 
         return res.status(201)
         .json(
-            new ApiResponse(201,video,"video fetched")
+            new ApiResponse(201,video[0],"video fetched")
         )
 
     } catch (error) {
-        throw new ApiError (401, `something went wrong while getting video by id: ${error}`)
+        throw new ApiError (400, `something went wrong while getting video by id: ${error}`)
     }
 })
 
