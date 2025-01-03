@@ -5,7 +5,7 @@ import {Subscription} from "../models/subscription.model.js"
 import {User} from "../models/user.model.js"
 import mongoose from "mongoose"
 
-const addSubscription = asyncHandler (async (req, res) => {
+const toggleSubscription = asyncHandler (async (req, res) => {
     try {
         let {channelId} = req.params
 
@@ -15,18 +15,31 @@ const addSubscription = asyncHandler (async (req, res) => {
             throw new ApiError (401, "unauthorized request")
         }
 
-        const channel = await User.findById({_id : new mongoose.Types.ObjectId(channelId)})
+        const channel = await User.findById(new mongoose.Types.ObjectId(channelId))
         if (!channel) {
             throw new ApiError (400, "channel doesn't exist")
         }
-
-        const subscription = await Subscription.create({
+        
+        // console.log(channelId)
+        // console.log(req.user._id)
+        // console.log(channel)
+        const alreadySubscribed = await Subscription.findOne({
             subscriber : req.user?._id,
-            channel : channel?._id
+            channel : new mongoose.Types.ObjectId(channel?._id)
         })
 
+        if (!alreadySubscribed){
+            await Subscription.create({
+                subscriber : req.user?._id,
+                channel :  new mongoose.Types.ObjectId(channel?._id)
+            })
+        }
+        else{
+            await Subscription.findByIdAndDelete(alreadySubscribed?._id)
+        }
+
         return res.status(201)
-        .json(new ApiResponse (201, subscription, "subscribed"))
+        .json(new ApiResponse (201, {}, "subscription changed successfully"))
 
     } catch (error) {
         throw new ApiError (400, `error while subscribing: ${error}`)
@@ -89,6 +102,6 @@ const getSubscribedChannels = asyncHandler (async (req, res) => {
     }
 })
 
-export {addSubscription,
+export {toggleSubscription,
         getSubscribedChannels
 }

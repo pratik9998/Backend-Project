@@ -1,5 +1,5 @@
 import { Router } from "express"
-import {addSubscription,
+import {toggleSubscription,
         getSubscribedChannels
 } from "../controllers/subscription.controller.js"
 import {verifyJWT} from '../middlewares/auth.middleware.js'
@@ -7,6 +7,6 @@ import {verifyJWT} from '../middlewares/auth.middleware.js'
 const router = Router()
 router.use(verifyJWT)
 
-router.route("/:channelId").get(getSubscribedChannels).post(addSubscription) //tested
+router.route("/:channelId").get(getSubscribedChannels).post(toggleSubscription) //tested
 
 export default router
